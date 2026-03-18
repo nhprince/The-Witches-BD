@@ -1,0 +1,187 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application, either a customer or an admin.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique identifier of the user, matching their Firebase Auth UID."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "customer"],
+          "description": "The role of the user."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the user was created."
+        }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "A product available in the store.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the product."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the product."
+        },
+        "price": {
+          "type": "number",
+          "description": "The current selling price of the product."
+        },
+        "compareAtPrice": {
+          "type": "number",
+          "description": "The original price of the product, used for discounts."
+        },
+        "sku": {
+          "type": "string",
+          "description": "The stock keeping unit identifier."
+        },
+        "stock": {
+          "type": "number",
+          "description": "The number of items currently in stock."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category the product belongs to."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags associated with the product."
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          },
+          "description": "URLs of the product images."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Active", "Draft", "Archived"],
+          "description": "The current status of the product."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the product was created."
+        }
+      },
+      "required": ["name", "price", "stock", "category", "status", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "An order placed by a customer.",
+      "type": "object",
+      "properties": {
+        "customerUid": {
+          "type": "string",
+          "description": "The UID of the customer who placed the order (if authenticated)."
+        },
+        "customerEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "The email address of the customer."
+        },
+        "shippingAddress": {
+          "type": "object",
+          "properties": {
+            "firstName": { "type": "string" },
+            "lastName": { "type": "string" },
+            "street": { "type": "string" },
+            "city": { "type": "string" },
+            "postalCode": { "type": "string" },
+            "phone": { "type": "string" }
+          },
+          "required": ["firstName", "lastName", "street", "city", "postalCode", "phone"]
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "quantity": { "type": "number" },
+              "image": { "type": "string" }
+            },
+            "required": ["productId", "name", "price", "quantity"]
+          },
+          "description": "The items included in the order."
+        },
+        "subtotal": {
+          "type": "number",
+          "description": "The total cost of the items."
+        },
+        "deliveryFee": {
+          "type": "number",
+          "description": "The cost of delivery."
+        },
+        "total": {
+          "type": "number",
+          "description": "The total cost of the order including delivery."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"],
+          "description": "The current status of the order."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["Cash on Delivery", "bKash / Nagad"],
+          "description": "The payment method chosen by the customer."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the order was placed."
+        }
+      },
+      "required": ["customerEmail", "shippingAddress", "items", "subtotal", "deliveryFee", "total", "status", "paymentMethod", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores user profiles."
+    },
+    "/products/{productId}": {
+      "schema": {
+        "$ref": "#/entities/Product"
+      },
+      "description": "Stores product listings."
+    },
+    "/orders/{orderId}": {
+      "schema": {
+        "$ref": "#/entities/Order"
+      },
+      "description": "Stores customer orders."
+    }
+  }
+}

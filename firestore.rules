@@ -1,0 +1,138 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required) - The unique identifier of the user
+    //   - email: string (required) - The user's email address
+    //   - name: string (optional) - The user's full name
+    //   - role: string (required, 'admin' or 'customer') - The role of the user
+    //   - createdAt: timestamp (required) - The timestamp when the user was created
+    //
+    // Collection: products
+    // Document ID: {productId}
+    // Fields:
+    //   - name: string (required) - The name of the product
+    //   - description: string (optional) - A detailed description of the product
+    //   - price: number (required) - The current selling price of the product
+    //   - compareAtPrice: number (optional) - The original price of the product
+    //   - sku: string (optional) - The stock keeping unit identifier
+    //   - stock: number (required) - The number of items currently in stock
+    //   - category: string (required) - The category the product belongs to
+    //   - tags: list (optional) - Tags associated with the product
+    //   - images: list (optional) - URLs of the product images
+    //   - status: string (required, 'Active', 'Draft', 'Archived') - The current status of the product
+    //   - createdAt: timestamp (required) - The timestamp when the product was created
+    //
+    // Collection: orders
+    // Document ID: {orderId}
+    // Fields:
+    //   - customerUid: string (optional) - The UID of the customer who placed the order
+    //   - customerEmail: string (required) - The email address of the customer
+    //   - shippingAddress: map (required) - The shipping address of the customer
+    //   - items: list (required) - The items included in the order
+    //   - subtotal: number (required) - The total cost of the items
+    //   - deliveryFee: number (required) - The cost of delivery
+    //   - total: number (required) - The total cost of the order including delivery
+    //   - status: string (required, 'Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled') - The current status of the order
+    //   - paymentMethod: string (required, 'Cash on Delivery', 'bKash / Nagad') - The payment method chosen by the customer
+    //   - createdAt: timestamp (required) - The timestamp when the order was placed
+    //
+    // ===============================================================
+    
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "abalbijoy73@gmail.com" && request.auth.token.email_verified == true));
+    }
+    
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+    
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'email', 'role', 'createdAt']) &&
+             data.uid is string && data.uid.size() > 0 && data.uid.size() < 128 &&
+             data.email is string && isValidEmail(data.email) &&
+             (!('name' in data) || (data.name is string && data.name.size() < 100)) &&
+             data.role in ['admin', 'customer'] &&
+             data.createdAt is timestamp;
+    }
+    
+    function isValidProduct(data) {
+      return hasRequiredFields(['name', 'price', 'stock', 'category', 'status', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             (!('description' in data) || (data.description is string && data.description.size() < 5000)) &&
+             data.price is number && data.price >= 0 &&
+             (!('compareAtPrice' in data) || (data.compareAtPrice is number && data.compareAtPrice >= 0)) &&
+             (!('sku' in data) || (data.sku is string && data.sku.size() < 100)) &&
+             data.stock is number && data.stock >= 0 &&
+             data.category is string && data.category.size() > 0 && data.category.size() < 100 &&
+             (!('tags' in data) || (data.tags is list && data.tags.size() <= 20)) &&
+             (!('images' in data) || (data.images is list && data.images.size() <= 10)) &&
+             data.status in ['Active', 'Draft', 'Archived'] &&
+             data.createdAt is timestamp;
+    }
+    
+    function isValidOrder(data) {
+      return hasRequiredFields(['customerEmail', 'shippingAddress', 'items', 'subtotal', 'deliveryFee', 'total', 'status', 'paymentMethod', 'createdAt']) &&
+             (!('customerUid' in data) || (data.customerUid is string && data.customerUid.size() < 128)) &&
+             data.customerEmail is string && isValidEmail(data.customerEmail) &&
+             data.shippingAddress is map && data.shippingAddress.keys().hasAll(['firstName', 'lastName', 'street', 'city', 'postalCode', 'phone']) &&
+             data.items is list && data.items.size() > 0 && data.items.size() <= 100 &&
+             data.subtotal is number && data.subtotal >= 0 &&
+             data.deliveryFee is number && data.deliveryFee >= 0 &&
+             data.total is number && data.total >= 0 &&
+             data.status in ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'] &&
+             data.paymentMethod in ['Cash on Delivery', 'bKash / Nagad'] &&
+             data.createdAt is timestamp;
+    }
+    
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && 
+                    ((request.resource.data.role == 'customer') || isAdmin());
+      allow update: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && 
+                    ((request.resource.data.role == resource.data.role) || isAdmin()) &&
+                    request.resource.data.uid == resource.data.uid &&
+                    request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin();
+    }
+    
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidProduct(request.resource.data);
+      allow update: if isAdmin() && isValidProduct(request.resource.data) && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin();
+    }
+    
+    match /orders/{orderId} {
+      // Allow customers to read their own orders, and admins to read all
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerUid == request.auth.uid);
+      // Allow anyone to create an order (guest checkout), but if authenticated, must match customerUid
+      allow create: if isValidOrder(request.resource.data) && 
+                    (!('customerUid' in request.resource.data) || (isAuthenticated() && request.resource.data.customerUid == request.auth.uid));
+      // Only admins can update orders (e.g., change status)
+      allow update: if isAdmin() && isValidOrder(request.resource.data) && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin();
+    }
+  }
+}
