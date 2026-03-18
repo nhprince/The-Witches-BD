@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@theme {
+  /* Primary Colors - Warm Brown */
+  --color-primary: #5D3D3D;
+  --color-primary-light: #7A5555;
+  --color-primary-dark: #3D2525;
+  
+  /* Secondary Colors - Coral/Peach from palette */
+  --color-secondary: #E08067;
+  --color-secondary-light: #E89A85;
+  --color-secondary-dark: #C56A52;
+  
+  /* Accent Colors - Soft Green from palette */
+  --color-accent: #8B9D83;
+  --color-accent-light: #A4B49C;
+  --color-accent-dark: #6B7D63;
+  
+  /* Background Colors - Warm beige from palette */
+  --color-background-light: #F8EDE3;
+  --color-background-dark: #3D2B2B;
+  --color-background-card: #FFFFFF;
+  --color-background-card-dark: #4A3535;
+  
+  /* Additional Colors - Updated to match palette */
+  --color-cream: #F8EDE3;
+  --color-pearl: #FDF8F3;
+  --color-taupe: #D4A88C;
+  --color-dusty-rose: #E08067;
+  --color-soft-pink: #FCE8E3;
+  --color-lavender: #D4C5E2;
+  --color-sage: #8B9D83;
+  
+  /* Text Colors */
+  --color-text-primary: #3D2B2B;
+  --color-text-secondary: #6B5B5B;
+  --color-text-muted: #8B7B7B;
+  --color-text-light: #F8EDE3;
+
+  /* Fonts */
+  --font-display: var(--font-work-sans), sans-serif;
+  --font-serif: var(--font-playfair-display), serif;
+  --font-body: var(--font-nunito), sans-serif;
+  --font-handwritten: var(--font-caveat), cursive;
+  --font-price: var(--font-nunito), sans-serif;
+
+  /* Border Radius */
+  --radius: 1rem;
+  --radius-lg: 2rem;
+  --radius-xl: 3rem;
+  --radius-full: 9999px;
+}
+
+.floral-pattern {
+    background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAJWs7PTqVH3FLrVL4l7JWIqL-1ivey8_xG5feTKYHP_SejFqE4pFyzsmTgs_5ggAwdD_DQD5_z1VDsHTuCCqtzvZDsWej91O2LrOgl6de6Tm990mXTEv9j9JwQ2tWOFbe57fdQI_CYcpJXQvdmhJgcI9J9owCf-C6hBMh7DoiRZikA_4Sp1T012E5NcGfY-2WDvO0-rtwC4fhbEdUXTao9HHIJrm-6wUEfAcy_1cJP89eNoEhZuxAn2CuVRBccIZtM9_lO_FtbwLtx');
+    opacity: 0.08;
+}
+.rotated-frame {
+    transform: rotate(2deg);
+}
+.underline-svg {
+    position: absolute;
+    bottom: -10px;
+    left: 0;
+    width: 100%;
+    height: 12px;
+}
+.active-tab {
+    background-color: var(--color-primary);
+    color: white;
+}
+.inactive-tab {
+    border: 1px solid var(--color-taupe);
+    color: var(--color-taupe);
+}
+.pearl-card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(232, 161, 161, 0.2);
+    transition: all 0.3s ease;
+}
+.pearl-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px -5px rgba(232, 161, 161, 0.3);
+}
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
