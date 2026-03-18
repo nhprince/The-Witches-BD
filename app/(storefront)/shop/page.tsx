@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useCart } from '@/components/CartProvider';
@@ -86,6 +86,22 @@ interface Product {
 
 
 export default function Shop() {
+  return (
+    <Suspense fallback={<ShopLoading />}>
+      <ShopContent />
+    </Suspense>
+  );
+}
+
+function ShopLoading() {
+  return (
+    <div className="min-h-screen bg-cream dark:bg-background-dark flex justify-center items-center">
+      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary" />
+    </div>
+  );
+}
+
+function ShopContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 

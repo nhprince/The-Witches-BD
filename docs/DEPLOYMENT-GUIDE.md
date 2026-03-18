@@ -1,290 +1,457 @@
 # Deploying Next.js (Standalone) on cPanel Shared Hosting
-## The Witches BD — Step by Step Guide
+## The Witches BD — Complete Deployment Guide
 
 ---
 
-## ⚠️ Important Warning First
+## 📋 Prerequisites Checklist
 
-Most **cheap shared cPanel hosts** (Hostinger, Namecheap shared, etc.) do **NOT** support
-running Node.js servers persistently. You need a host that offers:
+Before starting, make sure your cPanel hosting supports:
 
-✅ **Node.js App Manager** in cPanel (look for "Setup Node.js App" in your cPanel dashboard)
-✅ Persistent process management (PM2 or Phusion Passenger)
-✅ SSH access
+- [ ] **Node.js App Manager** (look for "Setup Node.js App" in cPanel)
+- [ ] **SSH Access** (optional but recommended)
+- [ ] **Apache with mod_proxy** (for reverse proxy)
+- [ ] **Node.js 18+ or 20+** available
 
-**Recommended hosts that work:**
-- Hostinger Business/Cloud plan
-- A2 Hosting (Turbo plans)
-- SiteGround (Growth/GoGeek)
-- Namecheap EasyWP (not shared — use their VPS)
-- **Easiest alternative: Railway.app or Render.com (free tier, zero config)**
+> ⚠️ **If your host doesn't have Node.js App Manager**, you cannot run this app on shared hosting. Use Vercel, Railway, or Render instead (see bottom of this guide).
 
 ---
 
-## STEP 1 — Prepare Your Local Build
+## STEP 1 — Build the Project Locally
 
-### 1.1 Make sure next.config.ts is correct
+### 1.1 Verify next.config.ts
+
+Your `next.config.ts` should already have `output: 'standalone'`:
 
 ```typescript
 const nextConfig: NextConfig = {
-  output: 'standalone',   // ← must be standalone
+  output: 'standalone',   // ← Required for self-hosting
   reactStrictMode: true,
-  // ... rest of your config
+  images: {
+    unoptimized: true,    // ← Recommended for shared hosting (no image API needed)
+  },
 };
 ```
 
-### 1.2 Build the app locally
+> **Note:** Adding `images.unoptimized: true` prevents issues with Next.js image optimization on shared hosting.
+
+### 1.2 Run the production build
 
 ```bash
 npm run build
 ```
 
-After build succeeds, you'll have a `.next/standalone` folder.
+Wait for the build to complete. You should see:
+```
+✓ Compiled successfully
+✓ Generating static pages
+✓ Collecting build traces
+```
 
-### 1.3 Copy static assets into standalone (REQUIRED — Next.js doesn't do this automatically)
+### 1.3 Copy static assets (CRITICAL)
+
+Next.js standalone build does NOT include static files automatically. You must copy them:
 
 ```bash
-# Copy public folder
+# Copy public folder (images, favicons, etc.)
 cp -r public .next/standalone/public
 
-# Copy static assets
+# Copy static assets (CSS, JS chunks)
 cp -r .next/static .next/standalone/.next/static
 ```
 
-### 1.4 Test the standalone build locally before uploading
+### 1.4 Test locally before uploading
 
 ```bash
 node .next/standalone/server.js
-# Visit http://localhost:3000 — should work perfectly
 ```
 
-If it works locally, you're ready to upload.
+Open http://localhost:3000 in your browser. Verify:
+- [ ] Homepage loads with images
+- [ ] Shop page works
+- [ ] Category icons display correctly
+- [ ] No console errors
+
+If everything works, your build is ready for deployment.
 
 ---
 
-## STEP 2 — Prepare the Upload Package
+## STEP 2 — Create Deployment Package
 
 ### 2.1 Create a clean deployment folder
 
 ```bash
-mkdir witches-bd-deploy
-cp -r .next/standalone/* witches-bd-deploy/
+# From your project root
+mkdir -p ../witches-bd-deploy
+cp -r .next/standalone/* ../witches-bd-deploy/
 ```
 
+### 2.2 Verify the deployment folder structure
+
 Your `witches-bd-deploy` folder should contain:
+
 ```
 witches-bd-deploy/
-├── server.js          ← the Node.js server entry point
-├── package.json
-├── node_modules/      ← only production deps (much smaller)
+├── server.js              ← Entry point (DO NOT RENAME)
+├── package.json           ← Production dependencies only
+├── node_modules/          ← Pre-built, smaller than dev
 ├── .next/
-│   └── static/
+│   └── static/            ← CSS, JS chunks
+└── public/
+    ├── products/          ← Product images
+    ├── favicons/          ← Favicon files
+    └── logo.webp          ← Logo
+```
+
+### 2.3 Create the ZIP archive
+
+```bash
+cd ../witches-bd-deploy
+zip -r ../witches-bd-deploy.zip .
+cd ..
+```
+
+You now have `witches-bd-deploy.zip` ready to upload.
+
+---
+
+## STEP 3 — Upload to cPanel
+
+### 3.1 Access cPanel File Manager
+
+1. Log into cPanel: `https://yourdomain.com:2083` or via your hosting dashboard
+2. Open **File Manager**
+3. Navigate to your home directory: `/home/yourusername/`
+
+### 3.2 Create app directory (outside public_html)
+
+1. Click **+ Folder** to create a new folder
+2. Name it `witches-bd` (or your preferred name)
+3. This folder will be at: `/home/yourusername/witches-bd/`
+
+> 🔒 **Security:** Keep app files OUTSIDE `public_html`. Only the proxy configuration goes in `public_html`.
+
+### 3.3 Upload and extract
+
+1. Enter the `witches-bd` folder you created
+2. Click **Upload**
+3. Select `witches-bd-deploy.zip` from your computer
+4. Wait for upload to complete
+5. Right-click the ZIP file → **Extract**
+6. Delete the ZIP file after extraction
+
+### 3.4 Verify uploaded files
+
+Your cPanel folder should now contain:
+```
+/home/yourusername/witches-bd/
+├── server.js
+├── package.json
+├── node_modules/
+├── .next/
 └── public/
 ```
 
-### 2.2 Zip it up
-
-```bash
-cd witches-bd-deploy
-zip -r ../witches-bd-deploy.zip .
-```
-
 ---
 
-## STEP 3 — cPanel Setup
+## STEP 4 — Configure Node.js App in cPanel
 
-### 3.1 Log into cPanel → File Manager
+### 4.1 Open Node.js App Manager
 
-1. Go to `yourdomain.com/cpanel` or your host's cPanel URL
-2. Open **File Manager**
-3. Navigate to your domain's root — usually `public_html` or a subdomain folder
-4. Create a new folder **outside** `public_html` for the app files:
-   - Navigate to `/home/yourusername/`
-   - Create folder: `witches-bd`
-
-> ⚠️ Keep app files OUTSIDE public_html for security.
-> Only the reverse proxy config lives in public_html.
-
-### 3.2 Upload and extract
-
-1. Enter `/home/yourusername/witches-bd/`
-2. Click **Upload** → upload `witches-bd-deploy.zip`
-3. Once uploaded, right-click the zip → **Extract**
-4. Delete the zip after extracting
-
-### 3.3 Set up Node.js App in cPanel
-
-1. In cPanel dashboard, find **"Setup Node.js App"** (or "Node.js Selector")
+1. In cPanel dashboard, find **"Setup Node.js App"** or **"Node.js Selector"**
 2. Click **"Create Application"**
-3. Fill in:
-   - **Node.js version**: Select 18.x or 20.x (latest LTS)
-   - **Application mode**: Production
-   - **Application root**: `/home/yourusername/witches-bd`
-   - **Application URL**: your domain or subdomain
-   - **Application startup file**: `server.js`
-4. Click **Create**
 
-### 3.4 Set environment variables
+### 4.2 Fill in application settings
 
-In the Node.js App settings, add these environment variables:
+| Setting | Value |
+|---------|-------|
+| **Node.js version** | 18.x or 20.x (LTS recommended) |
+| **Application mode** | Production |
+| **Application root** | `/home/yourusername/witches-bd` |
+| **Application URL** | Your domain (e.g., `yourdomain.com`) |
+| **Application startup file** | `server.js` |
+| **Port** | Leave empty (auto-assigned) |
+
+Click **Create** when done.
+
+### 4.3 Set environment variables
+
+In the Node.js App panel, scroll to **Environment variables** and add:
+
 ```
 NODE_ENV=production
-PORT=3000
 HOSTNAME=0.0.0.0
 ```
 
-Add any other env vars your app needs (database URLs, API keys, etc.)
+> **Note:** The port is usually auto-assigned by cPanel. Check the "Port" field in the app details.
 
-### 3.5 Install dependencies (if node_modules missing)
+### 4.4 Start the application
 
-In the Node.js App panel, click **"Run NPM Install"**
-Or via SSH:
-```bash
-cd /home/yourusername/witches-bd
-npm install --production
-```
+Click **"Run"** or **"Restart"** in the Node.js App panel.
+
+The status should change to **"Running"**.
 
 ---
 
-## STEP 4 — Domain / Subdomain Configuration
+## STEP 5 — Configure Reverse Proxy (Apache)
 
-### 4.1 If deploying to a subdomain (e.g. shop.yourdomain.com)
+### 5.1 Determine your Node.js port
 
-1. cPanel → **Subdomains**
-2. Create subdomain: `shop`
-3. Document root: `/home/yourusername/public_html/shop` (this is just for the proxy)
+In the Node.js App panel, look for the assigned port (usually something like `3000`, `8080`, or a random number like `12345`).
 
-### 4.2 Set up reverse proxy via .htaccess
+Write it down: **Your Port: __________**
 
-Go to `public_html` (or your subdomain's document root) and create/edit `.htaccess`:
+### 5.2 Create .htaccess in public_html
+
+1. Go to **File Manager**
+2. Navigate to `public_html` (or your subdomain folder)
+3. Create or edit `.htaccess`
+4. Add the following (replace `3000` with YOUR port):
 
 ```apache
 RewriteEngine On
 
-# Handle HTTPS
+# Force HTTPS
 RewriteCond %{HTTPS} off
 RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-# Proxy everything to Next.js Node server on port 3000
+# Proxy all requests to Node.js
 RewriteRule ^$ http://127.0.0.1:3000/ [P,L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ http://127.0.0.1:3000/$1 [P,L]
 
-# Required for mod_proxy
+# Required for proxy responses
 ProxyPassReverse / http://127.0.0.1:3000/
 ```
 
-> ⚠️ This requires `mod_proxy` and `mod_rewrite` to be enabled on your host.
-> Most modern cPanel hosts have these. If not, contact support.
+> **Important:** Replace `3000` with the actual port from Step 5.1.
+
+### 5.3 Alternative: Using Passenger (some hosts)
+
+If your host uses Phusion Passenger instead of Apache proxy:
+
+1. Create `app.js` in your app root:
+```javascript
+// app.js - Passenger entry point
+const server = require('./server.js');
+```
+
+2. Passenger will automatically detect and run this file.
 
 ---
 
-## STEP 5 — Start the App
+## STEP 6 — SSL Certificate (HTTPS)
 
-### 5.1 Via cPanel Node.js App Manager
+### 6.1 Install Let's Encrypt SSL
 
-Click **"Run"** or **"Restart"** in the Node.js App panel.
+1. In cPanel, go to **SSL/TLS** → **Let's Encrypt SSL**
+2. Select your domain
+3. Click **Issue** or **Install**
+4. Wait for installation to complete
 
-### 5.2 Via SSH (more reliable)
+### 6.2 Force HTTPS
+
+The `.htaccess` from Step 5.2 already includes HTTPS redirect. Verify it works:
+
+- Visit `http://yourdomain.com` → should redirect to `https://`
+- Browser should show 🔒 padlock icon
+
+---
+
+## STEP 7 — Verify Everything Works
+
+### 7.1 Test your website
+
+Visit your domain and check:
+
+- [ ] **Homepage** loads with hero image and category icons
+- [ ] **Images** load correctly (check browser DevTools → Network tab)
+- [ ] **Shop page** displays products
+- [ ] **Category filtering** works
+- [ ] **Cart** functions properly
+- [ ] **Mobile layout** looks correct
+- [ ] **Dark mode** toggle works
+- [ ] **Favicons** appear in browser tab
+
+### 7.2 Check for errors
+
+Open browser DevTools (F12) → Console tab:
+
+- ❌ **404 errors:** Static files not copied correctly
+- ❌ **500 errors:** Server-side issue, check Node.js logs
+- ❌ **Mixed content:** Some resources loading over HTTP
+
+---
+
+## STEP 8 — Using SSH (Recommended for Management)
+
+If you have SSH access, managing the app is easier:
+
+### 8.1 Connect via SSH
 
 ```bash
 ssh yourusername@yourdomain.com
+```
 
+### 8.2 Navigate to app folder
+
+```bash
 cd /home/yourusername/witches-bd
+```
 
-# Install PM2 globally if not available
+### 8.3 Use PM2 for process management
+
+```bash
+# Install PM2 if not available
 npm install -g pm2
 
-# Start the app with PM2
-pm2 start server.js --name "witches-bd" --env production
+# Start the app
+pm2 start server.js --name "witches-bd"
 
-# Save PM2 process list so it restarts on server reboot
+# View status
+pm2 status
+
+# View logs
+pm2 logs witches-bd
+
+# Restart after updates
+pm2 restart witches-bd
+
+# Save process list (auto-start on reboot)
 pm2 save
 pm2 startup
 ```
 
-### 5.3 Verify it's running
+---
+
+## STEP 9 — Updating Your Website
+
+When you make changes and need to redeploy:
+
+### 9.1 Build and package locally
 
 ```bash
-pm2 status
-# Should show: witches-bd | online
-
-curl http://localhost:3000
-# Should return your HTML
-```
-
----
-
-## STEP 6 — SSL Certificate
-
-1. cPanel → **SSL/TLS** → **Let's Encrypt SSL** (free)
-2. Select your domain → **Install**
-3. Done — your site is now HTTPS
-
----
-
-## STEP 7 — Test Everything
-
-Visit your domain and check:
-- [ ] Home page loads
-- [ ] Images load (check browser console for 404s)
-- [ ] Shop page loads and filters work
-- [ ] Mobile layout looks correct
-- [ ] Cart works
-- [ ] No console errors
-
----
-
-## STEP 8 — Updating the App (Redeployment)
-
-Every time you make changes:
-
-```bash
-# 1. Build locally
+# Build
 npm run build
 
-# 2. Copy static assets
+# Copy static files
 cp -r public .next/standalone/public
 cp -r .next/static .next/standalone/.next/static
 
-# 3. Zip
-cd .next/standalone && zip -r ../../new-deploy.zip .
+# Create deployment ZIP
+cd .next/standalone && zip -r ../../../deploy-update.zip . && cd ../../..
+```
 
-# 4. Upload to cPanel File Manager → extract → overwrite files
+### 9.2 Upload and restart
 
-# 5. Restart via SSH
+1. Upload `deploy-update.zip` to cPanel
+2. Extract into `/home/yourusername/witches-bd/` (overwrite existing)
+3. Restart via cPanel Node.js panel OR via SSH:
+
+```bash
 pm2 restart witches-bd
 ```
 
 ---
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
-| Problem | Fix |
-|---|---|
-| 502 Bad Gateway | Node app isn't running — check `pm2 status` |
-| Images not loading | Make sure you copied `public/` and `.next/static/` into standalone |
-| 404 on all pages | `.htaccess` proxy not configured or `mod_proxy` disabled |
-| App crashes on start | Check logs: `pm2 logs witches-bd` |
-| "Cannot find module" | Run `npm install` inside the standalone folder |
-| Port already in use | `pm2 delete witches-bd` then `pm2 start server.js` |
-| Changes not showing | Hard refresh (Ctrl+Shift+R) or `pm2 restart witches-bd` |
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| **502 Bad Gateway** | Node app not running | Check Node.js App status in cPanel, or `pm2 status` via SSH |
+| **Blank page / White screen** | Static files missing | Re-copy `public/` and `.next/static/` into standalone |
+| **Images not loading** | Files not uploaded | Verify `public/products/` exists in deployment folder |
+| **404 on all pages** | Proxy not configured | Check `.htaccess` exists in `public_html` |
+| **CSS not loading** | Static folder missing | Copy `.next/static/` to standalone |
+| **App crashes immediately** | Missing dependencies | Run `npm install --production` in app folder |
+| **"Cannot find module"** | node_modules incomplete | Re-upload with `node_modules/` included |
+| **Port already in use** | Old process still running | `pm2 delete witches-bd` then `pm2 start server.js` |
+| **Changes not showing** | Browser cache | Hard refresh (Ctrl+Shift+R) or `pm2 restart witches-bd` |
+| **Environment variables not working** | Not set in cPanel | Add in Node.js App → Environment variables section |
+
+### Viewing Error Logs
+
+**Via cPanel:**
+1. Go to **Terminal** or **Error Log** in cPanel
+2. Check for Node.js errors
+
+**Via SSH:**
+```bash
+pm2 logs witches-bd
+# or
+cat /home/yourusername/.pm2/logs/witches-bd-error.log
+```
 
 ---
 
-## Easier Alternatives (if cPanel gives you trouble)
+## 🚀 Easier Alternatives (If cPanel Doesn't Work)
 
-If your host doesn't support Node.js apps properly, these are **zero-config** options:
+If your host doesn't properly support Node.js or you encounter persistent issues:
 
-| Platform | Free Tier | Steps |
-|---|---|---|
-| **Railway.app** | $5/mo credit | Connect GitHub → auto deploys |
-| **Render.com** | Free (spins down) | Connect GitHub → done |
-| **Vercel** | Free | `npx vercel` in your project folder |
-| **Fly.io** | Free allowance | `flyctl launch` |
+### Option 1: Vercel (Recommended - Made for Next.js)
 
-Vercel is made by the Next.js team — it's the easiest and most optimized option.
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy in one command
+vercel
+```
+
+- Free tier available
+- Zero configuration needed
+- Automatic HTTPS
+- Automatic builds from GitHub
+
+### Option 2: Railway.app
+
+1. Go to railway.app
+2. Connect your GitHub repository
+3. Click **Deploy**
+4. Done!
+
+- $5/month free credit
+- Automatic deployments on push
+
+### Option 3: Render.com
+
+1. Go to render.com
+2. Create new **Web Service**
+3. Connect GitHub repo
+4. Build command: `npm run build && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static`
+5. Start command: `node .next/standalone/server.js`
+
+- Free tier (spins down after inactivity)
+- Automatic SSL
+
+---
+
+## 📁 Quick Reference - File Locations
+
+| File | Location | Purpose |
+|------|----------|---------|
+| `server.js` | `/home/user/witches-bd/` | Node.js entry point |
+| `.htaccess` | `/home/user/public_html/` | Apache proxy config |
+| `public/` | `/home/user/witches-bd/public/` | Static assets |
+| `.next/static/` | `/home/user/witches-bd/.next/static/` | CSS/JS chunks |
+
+---
+
+## ✅ Deployment Checklist
+
+Before going live:
+
+- [ ] Build completed successfully
+- [ ] `public/` copied to standalone
+- [ ] `.next/static/` copied to standalone
+- [ ] ZIP created and uploaded to cPanel
+- [ ] Node.js App created in cPanel
+- [ ] Environment variables set
+- [ ] `.htaccess` configured with correct port
+- [ ] SSL certificate installed
+- [ ] Website loads without errors
+- [ ] All images display correctly
+- [ ] Mobile layout works
 
 ---
 
