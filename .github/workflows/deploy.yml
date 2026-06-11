@@ -18,13 +18,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Build static export
         run: npx next build
-
-      - name: Remove large cache files
-        run: rm -rf .next/cache
 
       - name: Deploy to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-        run: npx wrangler pages deploy .next --project-name the-witches-bd --branch master
+        run: npx wrangler pages deploy out --project-name the-witches-bd --branch master
