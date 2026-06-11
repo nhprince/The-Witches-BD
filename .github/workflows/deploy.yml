@@ -21,6 +21,9 @@ jobs:
       - name: Build
         run: npx next build
 
+      - name: Remove large cache files
+        run: rm -rf .next/cache
+
       - name: Deploy to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
