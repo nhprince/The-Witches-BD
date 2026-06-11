@@ -1,12 +1,16 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-export default async function Success({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
-}) {
-  const resolvedSearchParams = await searchParams;
-  const orderId = resolvedSearchParams.orderId as string || 'ORD-001';
+export default function Success() {
+  const [orderId, setOrderId] = useState('ORD-001');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('orderId');
+    if (id) setOrderId(id);
+  }, []);
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-cream dark:bg-background-dark">
@@ -20,28 +24,8 @@ export default async function Success({
           Thank you for your purchase.
         </p>
         <p className="font-body text-sm sm:text-base text-text-muted mb-6 sm:mb-8">
-          Your order number is <span className="font-bold text-primary dark:text-cream">#{orderId}</span>. We've sent a confirmation email to your inbox.
+          Your order number is <span className="font-bold text-primary dark:text-cream">#{orderId}</span>.
         </p>
-
-        <div className="bg-white dark:bg-slate-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-secondary/10 mb-6 sm:mb-8 text-left">
-          <h3 className="font-bold font-body text-sm sm:text-base text-primary dark:text-cream mb-3 sm:mb-4 border-b border-secondary/20 pb-2">What happens next?</h3>
-          <ul className="space-y-3 sm:space-y-4 font-body text-xs sm:text-sm">
-            <li className="flex gap-2 sm:gap-3">
-              <span className="material-symbols-outlined text-secondary text-lg sm:text-xl">inventory_2</span>
-              <div>
-                <span className="font-bold block text-primary dark:text-cream">We prepare your items</span>
-                <span className="text-text-muted">Handmade items take 2-3 days to craft.</span>
-              </div>
-            </li>
-            <li className="flex gap-2 sm:gap-3">
-              <span className="material-symbols-outlined text-secondary text-lg sm:text-xl">local_shipping</span>
-              <div>
-                <span className="font-bold block text-primary dark:text-cream">It gets shipped</span>
-                <span className="text-text-muted">You'll receive a tracking link via SMS.</span>
-              </div>
-            </li>
-          </ul>
-        </div>
 
         <div className="flex flex-col gap-3 sm:gap-4">
           <Link 
